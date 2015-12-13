@@ -1,0 +1,9 @@
+Building Francs
+
+See doc/readme-qt.rst for instructions on building Francs-Qt,
+the intended-for-end-users, nice-graphical-interface, reference
+implementation of Francs.
+
+See doc/build-*.txt for instructions on building Francsd,
+the intended-for-services, no-graphical-interface, reference
+implementation of Francs.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<dwsync>
+<file name="port_posix.cc" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port_posix.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port_win.cc" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port_win.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="atomic_pointer.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="README" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port_example.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port_win.o" server="185.14.184.239" local="130122879520000000" remote="130122879520000000" Dst="1" />
+<file name="thread_annotations.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+<file name="port.h" server="185.14.184.239" local="130121505000000000" remote="130121505000000000" Dst="1" />
+</dwsync>

@@ -1,0 +1,5 @@
+rpc port: 12835
+net port: 12834
+block time: 4 mins
+total coins: 11000000
+block reward: 20
