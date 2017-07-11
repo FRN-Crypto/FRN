@@ -1,4 +1,4 @@
-Francs Core integration/staging tree
+Francs Core integration/staging tree v1.10.4.2
 =====================================
 
 rpc port: 12835
