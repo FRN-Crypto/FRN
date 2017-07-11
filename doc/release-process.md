@@ -1,12 +1,8 @@
 Release Process
 ====================
 
-* * *
-
 ###update (commit) version in sources
 
-
-	Francs-qt.pro
 	contrib/verifysfbinaries/verify.sh
 	doc/README*
 	share/setup.nsi
@@ -14,148 +10,134 @@ Release Process
 
 ###tag version in git
 
-	git tag -a v0.8.0
+	git tag -s v(new version, e.g. 0.8.0)
 
 ###write release notes. git shortlog helps a lot, for example:
 
-	git shortlog --no-merges v0.7.2..v0.8.0
+	git shortlog --no-merges v(current version, e.g. 0.7.2)..v(new version, e.g. 0.8.0)
 
 * * *
 
-##perform gitian builds
+###update Gitian
 
- From a directory containing the Francs source, gitian-builder and gitian.sigs
+ In order to take advantage of the new caching features in Gitian, be sure to update to a recent version (e9741525c or higher is recommended)
+
+###perform Gitian builds
+
+ From a directory containing the Francs source, gitian-builder and gitian.sigs.ltc
   
-	export SIGNER=(your gitian key, ie bluematt, sipa, etc)
-	export VERSION=0.8.0
-	cd ./gitian-builder
-
- Fetch and build inputs: (first time, or when dependency versions change)
-
-	mkdir -p inputs; cd inputs/
-	wget 'http://miniupnp.free.fr/files/download.php?file=miniupnpc-1.6.tar.gz' -O miniupnpc-1.6.tar.gz
-	wget 'http://www.openssl.org/source/openssl-1.0.1c.tar.gz'
-	wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
-	wget 'http://zlib.net/zlib-1.2.6.tar.gz'
-	wget 'ftp://ftp.simplesystems.org/pub/libpng/png/src/libpng-1.5.9.tar.gz'
-	wget 'http://fukuchi.org/works/qrencode/qrencode-3.2.0.tar.bz2'
-	wget 'http://downloads.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2'
-	wget 'http://releases.qt-project.org/qt4/source/qt-everywhere-opensource-src-4.8.3.tar.gz'
-	cd ..
-	./bin/gbuild ../Francs/contrib/gitian-descriptors/boost-win32.yml
-	mv build/out/boost-win32-1.50.0-gitian2.zip inputs/
-	./bin/gbuild ../Francs/contrib/gitian-descriptors/qt-win32.yml
-	mv build/out/qt-win32-4.8.3-gitian-r1.zip inputs/
-	./bin/gbuild ../Francs/contrib/gitian-descriptors/deps-win32.yml
-	mv build/out/Francs-deps-0.0.5.zip inputs/
-
- Build Francsd and Francs-qt on Linux32, Linux64, and Win32:
-  
-	./bin/gbuild --commit Francs=v${VERSION} ../Francs/contrib/gitian-descriptors/gitian.yml
-	./bin/gsign --signer $SIGNER --release ${VERSION} --destination ../gitian.sigs/ ../Francs/contrib/gitian-descriptors/gitian.yml
-	pushd build/out
-	zip -r Francs-${VERSION}-linux-gitian.zip *
-	mv Francs-${VERSION}-linux-gitian.zip ../../
+    export SIGNER=(your Gitian key, ie wtogami, coblee, etc)
+	export VERSION=(new version, e.g. 0.8.0)
+	pushd ./Francs
+	git checkout v${VERSION}
 	popd
-	./bin/gbuild --commit Francs=v${VERSION} ../Francs/contrib/gitian-descriptors/gitian-win32.yml
-	./bin/gsign --signer $SIGNER --release ${VERSION}-win32 --destination ../gitian.sigs/ ../Francs/contrib/gitian-descriptors/gitian-win32.yml
-	pushd build/out
-	zip -r Francs-${VERSION}-win32-gitian.zip *
-	mv Francs-${VERSION}-win32-gitian.zip ../../
-	popd
+	pushd ./gitian-builder
 
+###fetch and build inputs: (first time, or when dependency versions change)
+
+	mkdir -p inputs
+
+ Register and download the Apple SDK: (see OS X Readme for details)
+
+ https://developer.apple.com/downloads/download.action?path=Developer_Tools/xcode_6.1.1/xcode_6.1.1.dmg
+
+ Using a Mac, create a tarball for the 10.9 SDK and copy it to the inputs directory:
+
+	tar -C /Volumes/Xcode/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/ -czf MacOSX10.9.sdk.tar.gz MacOSX10.9.sdk
+
+###Optional: Seed the Gitian sources cache
+
+  By default, Gitian will fetch source files as needed. For offline builds, they can be fetched ahead of time:
+
+	make -C ../Francs/depends download SOURCES_PATH=`pwd`/cache/common
+
+  Only missing files will be fetched, so this is safe to re-run for each build.
+
+###Build Francs Core for Linux, Windows, and OS X:
+
+	./bin/gbuild --commit Francs=v${VERSION} ../Francs/contrib/gitian-descriptors/gitian-linux.yml
+	./bin/gsign --signer $SIGNER --release ${VERSION}-linux --destination ../gitian.sigs.ltc/ ../Francs/contrib/gitian-descriptors/gitian-linux.yml
+	mv build/out/Francs-*.tar.gz build/out/src/Francs-*.tar.gz ../
+	./bin/gbuild --commit Francs=v${VERSION} ../Francs/contrib/gitian-descriptors/gitian-win.yml
+	./bin/gsign --signer $SIGNER --release ${VERSION}-win --destination ../gitian.sigs.ltc/ ../Francs/contrib/gitian-descriptors/gitian-win.yml
+	mv build/out/Francs-*.zip build/out/Francs-*.exe ../
+	./bin/gbuild --commit Francs=v${VERSION} ../Francs/contrib/gitian-descriptors/gitian-osx.yml
+	./bin/gsign --signer $SIGNER --release ${VERSION}-osx-unsigned --destination ../gitian.sigs.ltc/ ../Francs/contrib/gitian-descriptors/gitian-osx.yml
+	mv build/out/Francs-*-unsigned.tar.gz inputs/Francs-osx-unsigned.tar.gz
+	mv build/out/Francs-*.tar.gz build/out/Francs-*.dmg ../
+	popd
   Build output expected:
 
-  1. linux 32-bit and 64-bit binaries + source (Francs-${VERSION}-linux-gitian.zip)
-  2. windows 32-bit binary, installer + source (Francs-${VERSION}-win32-gitian.zip)
-  3. Gitian signatures (in gitian.sigs/${VERSION}[-win32]/(your gitian key)/
-
-repackage gitian builds for release as stand-alone zip/tar/installer exe
-
-**Linux .tar.gz:**
-
-	unzip Francs-${VERSION}-linux-gitian.zip -d Francs-${VERSION}-linux
-	tar czvf Francs-${VERSION}-linux.tar.gz Francs-${VERSION}-linux
-	rm -rf Francs-${VERSION}-linux
-
-**Windows .zip and setup.exe:**
-
-	unzip Francs-${VERSION}-win32-gitian.zip -d Francs-${VERSION}-win32
-	mv Francs-${VERSION}-win32/Francs-*-setup.exe .
-	zip -r Francs-${VERSION}-win32.zip bitcoin-${VERSION}-win32
-	rm -rf Francs-${VERSION}-win32
-
-**Perform Mac build:**
-
-  OSX binaries are created by Gavin Andresen on a 32-bit, OSX 10.6 machine.
-
-	qmake RELEASE=1 USE_UPNP=1 USE_QRCODE=1 Francs-qt.pro
-	make
-	export QTDIR=/opt/local/share/qt4  # needed to find translations/qt_*.qm files
-	T=$(contrib/qt_translations.py $QTDIR/translations src/qt/locale)
-	python2.7 share/qt/clean_mac_info_plist.py
-	python2.7 contrib/macdeploy/macdeployqtplus Bitcoin-Qt.app -add-qt-tr $T -dmg -fancy contrib/macdeploy/fancy.plist
-
- Build output expected: Bitcoin-Qt.dmg
+  1. source tarball (Francs-${VERSION}.tar.gz)
+  2. linux 32-bit and 64-bit binaries dist tarballs (Francs-${VERSION}-linux[32|64].tar.gz)
+  3. windows 32-bit and 64-bit installers and dist zips (Francs-${VERSION}-win[32|64]-setup.exe, Francs-${VERSION}-win[32|64].zip)
+  4. OS X unsigned installer (Francs-${VERSION}-osx-unsigned.dmg)
+  5. Gitian signatures (in gitian.sigs/${VERSION}-<linux|win|osx-unsigned>/(your Gitian key)/
 
 ###Next steps:
-
-* Code-sign Windows -setup.exe (in a Windows virtual machine) and
-  OSX Bitcoin-Qt.app (Note: only Gavin has the code-signing keys currently)
-
-* upload builds to SourceForge
-
-* create SHA256SUMS for builds, and PGP-sign it
-
-* update Francs.org version
-  make sure all OS download links go to the right versions
-
-* update forum version
-
-* update wiki download links
-
-* update wiki changelog: [https://en.Francs.it/wiki/Changelog](https://en.bitcoin.it/wiki/Changelog)
 
 Commit your signature to gitian.sigs:
 
 	pushd gitian.sigs
-	git add ${VERSION}/${SIGNER}
-	git add ${VERSION}-win32/${SIGNER}
+	git add ${VERSION}-linux/${SIGNER}
+	git add ${VERSION}-win/${SIGNER}
+	git add ${VERSION}-osx-unsigned/${SIGNER}
+	git commit -a
+	git push  # Assuming you can push to the gitian.sigs tree
+	popd
+
+  Wait for OS X detached signature:
+	Once the OS X build has 3 matching signatures, Warren/Coblee will sign it with the apple App-Store key.
+	He will then upload a detached signature to be combined with the unsigned app to create a signed binary.
+
+  Create the signed OS X binary:
+
+	pushd ./gitian-builder
+	# Fetch the signature as instructed by Warren/Coblee
+	cp signature.tar.gz inputs/
+	./bin/gbuild -i ../Francs/contrib/gitian-descriptors/gitian-osx-signer.yml
+	./bin/gsign --signer $SIGNER --release ${VERSION}-osx-signed --destination ../gitian.sigs/ ../Francs/contrib/gitian-descriptors/gitian-osx-signer.yml
+	mv build/out/Francs-osx-signed.dmg ../Francs-${VERSION}-osx.dmg
+	popd
+
+Commit your signature for the signed OS X binary:
+
+	pushd gitian.sigs
+	git add ${VERSION}-osx-signed/${SIGNER}
 	git commit -a
 	git push  # Assuming you can push to the gitian.sigs tree
 	popd
 
 -------------------------------------------------------------------------
 
-### After 3 or more people have gitian-built, repackage gitian-signed zips:
+### After 3 or more people have gitian-built and their results match:
 
-From a directory containing Francs source, gitian.sigs and gitian zips
+- Perform code-signing.
 
-	export VERSION=0.5.1
-	mkdir Francs-${VERSION}-linux-gitian
-	pushd Francs-${VERSION}-linux-gitian
-	unzip ../Francs-${VERSION}-linux-gitian.zip
-	mkdir gitian
-	cp ../Francs/contrib/gitian-downloader/*.pgp ./gitian/
-	for signer in $(ls ../gitian.sigs/${VERSION}/); do
-	 cp ../gitian.sigs/${VERSION}/${signer}/Francs-build.assert ./gitian/${signer}-build.assert
-	 cp ../gitian.sigs/${VERSION}/${signer}/Francs-build.assert.sig ./gitian/${signer}-build.assert.sig
-	done
-	zip -r Francs-${VERSION}-linux-gitian.zip *
-	cp Francs-${VERSION}-linux-gitian.zip ../
-	popd
-	mkdir Francs-${VERSION}-win32-gitian
-	pushd Francs-${VERSION}-win32-gitian
-	unzip ../Francs-${VERSION}-win32-gitian.zip
-	mkdir gitian
-	cp ../Francs/contrib/gitian-downloader/*.pgp ./gitian/
-	for signer in $(ls ../gitian.sigs/${VERSION}-win32/); do
-	 cp ../gitian.sigs/${VERSION}-win32/${signer}/Francs-build.assert ./gitian/${signer}-build.assert
-	 cp ../gitian.sigs/${VERSION}-win32/${signer}/Francs-build.assert.sig ./gitian/${signer}-build.assert.sig
-	done
-	zip -r Francs-${VERSION}-win32-gitian.zip *
-	cp Francs-${VERSION}-win32-gitian.zip ../
-	popd
+    - Code-sign Windows -setup.exe (in a Windows virtual machine using signtool)
 
-- Upload gitian zips to SourceForge
+  Note: only Warren/Coblee has the code-signing keys currently.
+
+- Create `SHA256SUMS.asc` for the builds, and GPG-sign it:
+```bash
+sha256sum * > SHA256SUMS
+gpg --digest-algo sha256 --clearsign SHA256SUMS # outputs SHA256SUMS.asc
+rm SHA256SUMS
+```
+(the digest algorithm is forced to sha256 to avoid confusion of the `Hash:` header that GPG adds with the SHA256 used for the files)
+
+- Update Francs.org version
+
+- Announce the release:
+
+  - Release sticky on Francstalk: https://Francstalk.org/index.php?board=1.0
+
+  - Francs-development mailing list
+
+  - Update title of #Francs on Freenode IRC
+
+  - Optionally reddit /r/Francs, ... but this will usually sort out itself
+
+- Add release notes for the new version to the directory `doc/release-notes` in git master
+
 - Celebrate 
